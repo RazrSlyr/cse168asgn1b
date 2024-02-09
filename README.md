@@ -1,4 +1,4 @@
-# CSE 168 Assignment 1A
+# CSE 168 Assignment 1B
 ## What is the Assignment?
 The goal of the assignment was to convert our CSE 160 final projects into a VR experience
 ## How did we do it?
