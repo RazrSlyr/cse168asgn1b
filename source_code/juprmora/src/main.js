@@ -208,9 +208,49 @@ scene.add(sprite);
 }
 
 const controls = new OrbitControls(camera, canvas);
-document.body.appendChild( VRButton.createButton( renderer ) );
+let raycaster = new THREE.Raycaster();
+let baseReferenceSpace = null;
+let INTERSECTION = undefined;
+renderer.xr.addEventListener( 'sessionstart', () => baseReferenceSpace = renderer.xr.getReferenceSpace() );
+renderer.shadowMap.enabled = true;
 renderer.xr.enabled = true;
 
+
+document.body.appendChild( VRButton.createButton( renderer ) );
+
+const controller1 = renderer.xr.getController(0);
+controller1.addEventListener('selectstart', onSelectStart);
+controller1.addEventListener('selectend', onSelectEnd);
+scene.add(controller1);
+const controller2 = renderer.xr.getController(1);
+controller2.addEventListener('selectstart', onSelectStart);
+controller2.addEventListener('selectend', onSelectEnd);
+scene.add(controller2);
+// henry's
+function onSelectStart() {
+
+	this.userData.isSelecting = true;
+
+}
+// henry's
+function onSelectEnd() {
+
+	this.userData.isSelecting = false;
+
+	if ( INTERSECTION ) {
+		console.log("INTERSECTED");
+		const offsetPosition = { x: - INTERSECTION.x, y: - INTERSECTION.y, z: - INTERSECTION.z, w: 1 };
+		const offsetRotation = new THREE.Quaternion();
+		const transform = new XRRigidTransform( offsetPosition, offsetRotation );
+		const teleportSpaceOffset = baseReferenceSpace.getOffsetReferenceSpace( transform );
+
+		renderer.xr.setReferenceSpace( teleportSpaceOffset );
+
+	}
+
+}
+
+let tempMatrix = new THREE.Matrix4();
 function render(time){
 	let seconds = time * 0.001;
 	
@@ -219,7 +259,34 @@ function render(time){
 	//updateLight(seconds)
 	controls.update();
 
+    INTERSECTION = undefined;
+	// console.log("UPDATING");
+    if ( controller1.userData.isSelecting === true ) {
 
+        tempMatrix.identity().extractRotation( controller1.matrixWorld );
+		console.log(controller1.matrixWorld);
+        raycaster.ray.origin.setFromMatrixPosition( controller1.matrixWorld );
+        raycaster.ray.direction.set( 0, 0, - 1 ).applyMatrix4( tempMatrix );
+		// console.log("RAYCASTER", raycaster.ray);
+        const intersects = raycaster.intersectObjects( [ plane ] );
+
+        if ( intersects.length > 0 ) {
+            INTERSECTION = intersects[ 0 ].point;
+        }
+	}
+   if ( controller2.userData.isSelecting === true ) {
+
+        tempMatrix.identity().extractRotation( controller2.matrixWorld );
+		console.log(controller1.matrixWorld);
+        raycaster.ray.origin.setFromMatrixPosition( controller2.matrixWorld );
+        raycaster.ray.direction.set( 0, 0, - 1 ).applyMatrix4( tempMatrix );
+		// console.log("RAYCASTER", raycaster.ray);
+        const intersects = raycaster.intersectObjects( [ plane ] );
+
+        if ( intersects.length > 0 ) {
+            INTERSECTION = intersects[ 0 ].point;
+        }
+	}
 	renderer.render(scene, camera);
 	
 	if (resizeRendererToDisplaySize(renderer)) {
@@ -228,9 +295,7 @@ function render(time){
 		//controls.handleResize();
 		camera.updateProjectionMatrix();
 		controls.update();
-	}
-	// requestAnimationFrame(render);
-
+	}	
 }
 console.log(scene);
 //requestAnimationFrame(render);
